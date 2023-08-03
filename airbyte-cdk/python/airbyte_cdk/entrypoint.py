@@ -46,12 +46,28 @@ class AirbyteEntrypoint(object):
 
     @click.command()
     @click.option('--debug', is_flag=True, help='enables detailed debug logs related to the sync')
-    @click.argument('command', type=click.Choice(['spec', 'check', 'discover', 'read'], case_sensitive=False))
+    def spec(debug):
+        return {'debug': debug, 'command': 'spec'}
+
+    @click.command()
+    @click.option('--debug', is_flag=True, help='enables detailed debug logs related to the sync')
+    @click.option('--config', type=str, help='path to the json configuration file')
+    def check(debug, config):
+        return {'debug': debug, 'command': 'check', 'config': config}
+
+    @click.command()
+    @click.option('--debug', is_flag=True, help='enables detailed debug logs related to the sync')
+    @click.option('--config', type=str, help='path to the json configuration file')
+    def discover(debug, config):
+        return {'debug': debug, 'command': 'discover', 'config': config}
+
+    @click.command()
+    @click.option('--debug', is_flag=True, help='enables detailed debug logs related to the sync')
     @click.option('--config', type=str, help='path to the json configuration file')
     @click.option('--catalog', type=str, help='path to the catalog used to determine which data to read')
     @click.option('--state', type=str, help='path to the json-encoded state file')
-    def parse_args(debug, command, config, catalog, state):
-        return {'debug': debug, 'command': command, 'config': config, 'catalog': catalog, 'state': state}
+    def read(debug, config, catalog, state):
+        return {'debug': debug, 'command': 'read', 'config': config, 'catalog': catalog, 'state': state}
         subparsers.add_parser("spec", help="outputs the json configuration specification", parents=[parent_parser])
 
         # check
