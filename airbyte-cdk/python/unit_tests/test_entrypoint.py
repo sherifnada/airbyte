@@ -89,25 +89,24 @@ def test_airbyte_entrypoint_init(mocker):
 @pytest.mark.parametrize(
     ["cmd", "args", "expected_args"],
     [
-        ("spec", {"debug": ""}, {"command": "spec", "debug": True}),
+        ("spec", {"debug": True}, {"command": "spec", "debug": True}),
         ("check", {"config": "config_path"}, {"command": "check", "config": "config_path", "debug": False}),
-        ("discover", {"config": "config_path", "debug": ""}, {"command": "discover", "config": "config_path", "debug": True}),
+        ("discover", {"config": "config_path", "debug": True}, {"command": "discover", "config": "config_path", "debug": True}),
         (
             "read",
-            {"config": "config_path", "catalog": "catalog_path", "state": "None"},
-            {"command": "read", "config": "config_path", "catalog": "catalog_path", "state": "None", "debug": False},
+            {"config": "config_path", "catalog": "catalog_path", "state": None},
+            {"command": "read", "config": "config_path", "catalog": "catalog_path", "state": None, "debug": False},
         ),
         (
             "read",
-            {"config": "config_path", "catalog": "catalog_path", "state": "state_path", "debug": ""},
+            {"config": "config_path", "catalog": "catalog_path", "state": "state_path", "debug": True},
             {"command": "read", "config": "config_path", "catalog": "catalog_path", "state": "state_path", "debug": True},
         ),
     ],
 )
 def test_parse_valid_args(cmd: str, args: Mapping[str, Any], expected_args, entrypoint: AirbyteEntrypoint):
-    arglist = _as_arglist(cmd, args)
-    parsed_args = entrypoint.parse_args(arglist)
-    assert vars(parsed_args) == expected_args
+    parsed_args = entrypoint.parse_args([cmd] + [f'--{k}={v}' for k, v in args.items()])
+    assert parsed_args == expected_args
 
 
 @pytest.mark.parametrize(
@@ -124,7 +123,7 @@ def test_parse_missing_required_args(cmd: str, args: MutableMapping[str, Any], e
         argcopy = deepcopy(args)
         del argcopy[required_arg]
         with pytest.raises(BaseException):
-            entrypoint.parse_args(_as_arglist(cmd, argcopy))
+            entrypoint.parse_args([cmd] + [f'--{k}={v}' for k, v in argcopy.items()])
 
 
 def _wrap_message(submessage: Union[AirbyteConnectionStatus, ConnectorSpecification, AirbyteRecordMessage, AirbyteCatalog]) -> str:
