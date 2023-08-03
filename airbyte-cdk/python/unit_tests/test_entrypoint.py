@@ -3,7 +3,7 @@
 #
 
 import os
-from argparse import Namespace
+from click.testing import CliRunner
 from copy import deepcopy
 from typing import Any, List, Mapping, MutableMapping, Union
 from unittest import mock
@@ -105,9 +105,10 @@ def test_airbyte_entrypoint_init(mocker):
     ],
 )
 def test_parse_valid_args(cmd: str, args: Mapping[str, Any], expected_args, entrypoint: AirbyteEntrypoint):
-    arglist = _as_arglist(cmd, args)
-    parsed_args = entrypoint.parse_args(arglist)
-    assert vars(parsed_args) == expected_args
+    runner = CliRunner()
+    result = runner.invoke(entrypoint.cli, _as_arglist(cmd, args))
+    assert result.exit_code == 0
+    assert result.output == expected_args
 
 
 @pytest.mark.parametrize(
@@ -123,8 +124,9 @@ def test_parse_missing_required_args(cmd: str, args: MutableMapping[str, Any], e
     for required_arg in required_args[cmd]:
         argcopy = deepcopy(args)
         del argcopy[required_arg]
-        with pytest.raises(BaseException):
-            entrypoint.parse_args(_as_arglist(cmd, argcopy))
+        runner = CliRunner()
+        result = runner.invoke(entrypoint.cli, _as_arglist(cmd, argcopy))
+        assert result.exit_code != 0
 
 
 def _wrap_message(submessage: Union[AirbyteConnectionStatus, ConnectorSpecification, AirbyteRecordMessage, AirbyteCatalog]) -> str:
