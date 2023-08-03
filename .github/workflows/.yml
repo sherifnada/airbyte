@@ -1,0 +1,21 @@
+name: New Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Run private action loader
+      uses: nick-fields/private-action-loader@v3
+      with:
+        pal-repo-token: ${{ secrets.PAL_REPO_TOKEN }}
+        pal-repo-name: airbytehq/workflow-actions@production
+        command: pull
