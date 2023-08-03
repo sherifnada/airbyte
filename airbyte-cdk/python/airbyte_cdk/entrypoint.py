@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Airbyte, Inc., all rights reserved.
 #
 
-import argparse
+import click
 import importlib
 import ipaddress
 import logging
@@ -44,15 +44,14 @@ class AirbyteEntrypoint(object):
         self.source = source
         self.logger = logging.getLogger(f"airbyte.{getattr(source, 'name', '')}")
 
-    @staticmethod
-    def parse_args(args: List[str]) -> argparse.Namespace:
-        # set up parent parsers
-        parent_parser = argparse.ArgumentParser(add_help=False)
-        parent_parser.add_argument("--debug", action="store_true", help="enables detailed debug logs related to the sync")
-        main_parser = argparse.ArgumentParser()
-        subparsers = main_parser.add_subparsers(title="commands", dest="command")
-
-        # spec
+    @click.command()
+    @click.option('--debug', is_flag=True, help='enables detailed debug logs related to the sync')
+    @click.argument('command', type=click.Choice(['spec', 'check', 'discover', 'read'], case_sensitive=False))
+    @click.option('--config', type=str, help='path to the json configuration file')
+    @click.option('--catalog', type=str, help='path to the catalog used to determine which data to read')
+    @click.option('--state', type=str, help='path to the json-encoded state file')
+    def parse_args(debug, command, config, catalog, state):
+        return {'debug': debug, 'command': command, 'config': config, 'catalog': catalog, 'state': state}
         subparsers.add_parser("spec", help="outputs the json configuration specification", parents=[parent_parser])
 
         # check
@@ -79,12 +78,12 @@ class AirbyteEntrypoint(object):
 
         return main_parser.parse_args(args)
 
-    def run(self, parsed_args: argparse.Namespace) -> Iterable[str]:
-        cmd = parsed_args.command
+    def run(self, parsed_args: dict) -> Iterable[str]:
+        cmd = parsed_args['command']
         if not cmd:
             raise Exception("No command passed")
-
-        if hasattr(parsed_args, "debug") and parsed_args.debug:
+    
+        if 'debug' in parsed_args and parsed_args['debug']:
             self.logger.setLevel(logging.DEBUG)
             self.logger.debug("Debug logs enabled")
         else:
@@ -100,7 +99,7 @@ class AirbyteEntrypoint(object):
                     ]
                     yield self.airbyte_message_to_string(message)
                 else:
-                    raw_config = self.source.read_config(parsed_args.config)
+    raw_config = self.source.read_config(parsed_args['config'])
                     config = self.source.configure(raw_config, temp_dir)
 
                     if cmd == "check":
@@ -108,8 +107,8 @@ class AirbyteEntrypoint(object):
                     elif cmd == "discover":
                         yield from map(AirbyteEntrypoint.airbyte_message_to_string, self.discover(source_spec, config))
                     elif cmd == "read":
-                        config_catalog = self.source.read_catalog(parsed_args.catalog)
-                        state = self.source.read_state(parsed_args.state)
+    config_catalog = self.source.read_catalog(parsed_args['catalog'])
+    state = self.source.read_state(parsed_args['state'])
 
                         yield from map(AirbyteEntrypoint.airbyte_message_to_string, self.read(source_spec, config, config_catalog, state))
                     else:
