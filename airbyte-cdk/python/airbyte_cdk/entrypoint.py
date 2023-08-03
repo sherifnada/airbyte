@@ -2,7 +2,7 @@
 # Copyright (c) 2023 Airbyte, Inc., all rights reserved.
 #
 
-import argparse
+import click
 import importlib
 import ipaddress
 import logging
@@ -44,40 +44,36 @@ class AirbyteEntrypoint(object):
         self.source = source
         self.logger = logging.getLogger(f"airbyte.{getattr(source, 'name', '')}")
 
-    @staticmethod
-    def parse_args(args: List[str]) -> argparse.Namespace:
-        # set up parent parsers
-        parent_parser = argparse.ArgumentParser(add_help=False)
-        parent_parser.add_argument("--debug", action="store_true", help="enables detailed debug logs related to the sync")
-        main_parser = argparse.ArgumentParser()
-        subparsers = main_parser.add_subparsers(title="commands", dest="command")
+    @click.group()
+    @click.option('--debug', is_flag=True, help="enables detailed debug logs related to the sync")
+    @click.pass_context
+    def cli(ctx, debug):
+        ctx.ensure_object(dict)
+        ctx.obj['DEBUG'] = debug
 
-        # spec
-        subparsers.add_parser("spec", help="outputs the json configuration specification", parents=[parent_parser])
+    @cli.command(help="outputs the json configuration specification")
+    def spec():
+        pass
 
-        # check
-        check_parser = subparsers.add_parser("check", help="checks the config can be used to connect", parents=[parent_parser])
-        required_check_parser = check_parser.add_argument_group("required named arguments")
-        required_check_parser.add_argument("--config", type=str, required=True, help="path to the json configuration file")
+    @cli.command(help="checks the config can be used to connect")
+    @click.option('--config', required=True, type=click.Path(exists=True), help="path to the json configuration file")
+    def check(config):
+        pass
 
-        # discover
-        discover_parser = subparsers.add_parser(
-            "discover", help="outputs a catalog describing the source's schema", parents=[parent_parser]
-        )
-        required_discover_parser = discover_parser.add_argument_group("required named arguments")
-        required_discover_parser.add_argument("--config", type=str, required=True, help="path to the json configuration file")
+    @cli.command(help="outputs a catalog describing the source's schema")
+    @click.option('--config', required=True, type=click.Path(exists=True), help="path to the json configuration file")
+    def discover(config):
+        pass
 
-        # read
-        read_parser = subparsers.add_parser("read", help="reads the source and outputs messages to STDOUT", parents=[parent_parser])
+    @cli.command(help="reads the source and outputs messages to STDOUT")
+    @click.option('--config', required=True, type=click.Path(exists=True), help="path to the json configuration file")
+    @click.option('--catalog', required=True, type=click.Path(exists=True), help="path to the catalog used to determine which data to read")
+    @click.option('--state', type=click.Path(exists=True), help="path to the json-encoded state file")
+    def read(config, catalog, state):
+        pass
 
-        read_parser.add_argument("--state", type=str, required=False, help="path to the json-encoded state file")
-        required_read_parser = read_parser.add_argument_group("required named arguments")
-        required_read_parser.add_argument("--config", type=str, required=True, help="path to the json configuration file")
-        required_read_parser.add_argument(
-            "--catalog", type=str, required=True, help="path to the catalog used to determine which data to read"
-        )
-
-        return main_parser.parse_args(args)
+    if __name__ == "__main__":
+        cli(obj={})
 
     def run(self, parsed_args: argparse.Namespace) -> Iterable[str]:
         cmd = parsed_args.command
